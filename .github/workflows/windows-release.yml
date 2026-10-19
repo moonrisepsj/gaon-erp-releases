@@ -28,10 +28,14 @@ jobs:
           $archive = 'release/win-unpacked/resources/app.asar'
           $listed = & npx --no-install asar list $archive
           if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect ASAR' }
-          $allowed = @('/app','/app/desktop-client-main.mjs','/app/desktop-client-policy.mjs','/app/desktop-client-preload.cjs','/app/desktop-client-setup.html','/app/desktop-client-setup.css','/app/desktop-client-setup.mjs','/app/desktop-client-manual.html','/package.json')
+          $listed = @($listed | ForEach-Object { $_.Replace('\','/') })
+          $package = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
+          $allowed = @('/app') + @($package.build.files | ForEach-Object { '/' + $_.Replace('\','/') })
+          foreach ($required in $allowed) {
+            if ($required -notin $listed) { throw "Required packaged file missing: $required" }
+          }
           foreach ($file in $listed) {
-            $normal = $file.Replace('\','/')
-            if ($normal -notin $allowed) { throw "Unexpected packaged file: $normal" }
+            if ($file -notin $allowed) { throw "Unexpected packaged file: $file" }
           }
           $listed | Set-Content release/packaged-files.txt
           Get-FileHash release/GAON-ERP-Setup-x64.exe,release/GAON-ERP-Windows-x64.zip -Algorithm SHA256 | Format-Table -AutoSize
@@ -49,13 +53,38 @@ jobs:
             if (-not (Test-Path -LiteralPath $path)) { throw "Installed file missing: $path" }
           }
           $version = (Get-Item -LiteralPath $exe).VersionInfo.ProductVersion
+          $client = $null
+          $clientStarted = $false
+          try {
+            $client = Start-Process -FilePath $exe -PassThru
+            for ($i = 0; $i -lt 30; $i++) {
+              Start-Sleep -Milliseconds 500
+              $client.Refresh()
+              if ($client.HasExited) { throw "Installed app exited before showing its window: $($client.ExitCode)" }
+              if ($client.MainWindowHandle -ne 0 -and $client.MainWindowTitle -eq 'GAON ERP') {
+                $clientStarted = $true
+                break
+              }
+            }
+            if (-not $clientStarted) { throw 'Installed app did not show the GAON ERP window within 15 seconds' }
+            Write-Host 'Installed app launch verified: GAON ERP window is visible'
+          }
+          finally {
+            if ($null -ne $client -and -not $client.HasExited) {
+              [void]$client.CloseMainWindow()
+              if (-not $client.WaitForExit(5000)) {
+                Stop-Process -Id $client.Id -Force
+                $client.WaitForExit()
+              }
+            }
+          }
           $uninstaller = @(Get-ChildItem -LiteralPath $installDir -Filter '*Uninstall*.exe')
           if ($uninstaller.Count -ne 1) { throw 'Uninstaller missing or ambiguous' }
           $uninstall = Start-Process -FilePath $uninstaller[0].FullName -ArgumentList '/S' -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Uninstaller failed: $($uninstall.ExitCode)" }
           for ($i = 0; $i -lt 20 -and (Test-Path -LiteralPath $exe); $i++) { Start-Sleep -Seconds 1 }
           if (Test-Path -LiteralPath $exe) { throw 'App remains after uninstall' }
-          $result = @{ installerExit = $install.ExitCode; uninstallerExit = $uninstall.ExitCode; version = $version; installedClient = $true; installedManual = $true; removedClient = $true; platform = 'Windows x64' }
+          $result = @{ installerExit = $install.ExitCode; uninstallerExit = $uninstall.ExitCode; version = $version; installedClient = $true; installedClientLaunched = $clientStarted; installedManual = $true; removedClient = $true; platform = 'Windows x64' }
           $result | ConvertTo-Json | Tee-Object -FilePath 'release/windows-installer-verification.json'
       - uses: actions/upload-artifact@v4
         with:

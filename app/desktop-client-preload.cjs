@@ -8,3 +8,5 @@ contextBridge.exposeInMainWorld('gaonDesktop',Object.freeze({
  forgetServer:()=>ipcRenderer.invoke('gaon-client:forget-server'),
  openManual:()=>ipcRenderer.invoke('gaon-client:manual')
 }));
+
+contextBridge.exposeInMainWorld('gaonNotifications',Object.freeze({status:()=>ipcRenderer.invoke('gaon-notifications:status'),configure:value=>ipcRenderer.invoke('gaon-notifications:configure',value)}));

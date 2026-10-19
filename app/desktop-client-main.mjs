@@ -1,21 +1,23 @@
-import {app,BrowserWindow,Menu,dialog,ipcMain,shell,session} from 'electron';
+import {app,BrowserWindow,Menu,dialog,ipcMain,shell,session,Notification} from 'electron';
 import {readFile,writeFile,rm,access} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {randomBytes,createHash} from 'node:crypto';
+import {createDesktopNotifications,prepareWindowsNotificationShortcut,createNativeNotifier,createNotificationPreferenceStore,installDesktopNotificationIPC,observeDesktopLogout} from './desktop-notifications.mjs';
 import {clientWebPreferences,normalizeServerURL,clientURLAction,trustedClientHealth,trustedClientStatus,trustedClientDownload} from './desktop-client-policy.mjs';
 
 app.setName('GAON ERP');
+if(process.platform==='win32')app.setAppUserModelId('studio.keelson.gaon.erp');
 const here=path.dirname(fileURLToPath(import.meta.url)),setupFile=path.join(here,'desktop-client-setup.html'),setupURL=pathToFileURL(setupFile).href;
 const partition='persist:gaon-erp-client';
-let window,manualWindow,serverOrigin='',connected=false,signedIn=false,loginBusy=false,quitting=false,statePath,statusMessage='',locationGranted=false;
+let window,manualWindow,serverOrigin='',connected=false,signedIn=false,loginBusy=false,quitting=false,statePath,statusMessage='',locationGranted=false,notifications,connectionBusy=false;
 if(!app.isPackaged&&process.env.GAON_DESKTOP_TEST_USER_DATA)app.setPath('userData',path.resolve(process.env.GAON_DESKTOP_TEST_USER_DATA));
 if(!app.requestSingleInstanceLock())app.quit();
 else{
  app.on('second-instance',focus);
  app.on('activate',()=>window?focus():start().catch(fail));
  app.on('window-all-closed',()=>app.quit());
- app.on('before-quit',()=>{quitting=true;});
+ app.on('before-quit',()=>{quitting=true;notifications?.stop();});
  app.whenReady().then(start).catch(fail);
 }
 const ses=()=>session.fromPartition(partition);
@@ -25,7 +27,7 @@ async function fail(error){await dialog.showMessageBox({type:'error',title:'GAON
 async function start(){
  statePath=path.join(app.getPath('userData'),'server.json');
  serverOrigin=await readConfiguredServer();
- configureSession();configureIPC();setMenu();createWindow();
+ configureSession();configureNotifications();configureIPC();setMenu();createWindow();
  if(!serverOrigin)return showSetup('관리자가 안내한 ERP 서버 주소를 입력해 주세요.');
  try{await verifyServer();signedIn=await verifySession();if(signedIn)return openERP();return showSetup('서버 연결을 확인했습니다. 직원 로그인을 완료해 주세요.');}
  catch(error){return showSetup(error.message);}
@@ -37,6 +39,8 @@ async function readConfiguredServer(){
 function createWindow(){
  window=new BrowserWindow({title:'GAON ERP',width:1180,height:820,minWidth:880,minHeight:600,show:false,backgroundColor:'#eef3f7',webPreferences:{...clientWebPreferences,partition,preload:path.join(here,'desktop-client-preload.cjs')}});
  const wc=window.webContents;
+ wc.on('did-finish-load',()=>{if(clientURLAction(wc.getURL(),serverOrigin)==='internal'&&signedIn)notifications?.resume();else notifications?.reset();});
+ window.on('closed',()=>notifications?.stop());
  const navigate=(event,legacy)=>{const url=event.url||legacy;if(url===setupURL)return;const action=clientURLAction(url,serverOrigin);if(action==='internal'&&signedIn)return;event.preventDefault();routeURL(url,action);};
  wc.on('will-navigate',navigate);wc.on('will-redirect',navigate);wc.on('will-attach-webview',event=>event.preventDefault());
  wc.setWindowOpenHandler(({url})=>{routeURL(url,clientURLAction(url,serverOrigin));return {action:'deny'};});
@@ -47,10 +51,10 @@ function createWindow(){
 function setupSender(event){if(event.sender!==window?.webContents||event.senderFrame?.url!==setupURL)throw Error('허용되지 않은 화면입니다.');}
 function configureIPC(){
  ipcMain.handle('gaon-client:state',event=>{setupSender(event);return {serverOrigin,connected,signedIn,message:statusMessage||(connected?(signedIn?'직원 로그인이 확인됐습니다.':'서버 연결을 확인했습니다. 직원 로그인을 완료해 주세요.'):(serverOrigin?'서버 연결을 확인할 수 없습니다. 주소와 서버 상태를 확인해 주세요.':'관리자가 안내한 ERP 서버 주소를 입력해 주세요.'))};});
- ipcMain.handle('gaon-client:save-server',async(event,value)=>{setupSender(event);if(loginBusy)throw Error('직원 로그인 진행 중에는 서버 주소를 바꿀 수 없습니다.');const next=normalizeServerURL(value);await verifyServer(next);if(next!==serverOrigin)locationGranted=false;serverOrigin=next;connected=true;signedIn=await verifySession();statusMessage=signedIn?'직원 로그인이 확인됐습니다. ERP를 열 수 있습니다.':'서버 연결을 확인했습니다. 직원 로그인을 진행해 주세요.';await writeFile(statePath,JSON.stringify({serverOrigin})+'\n',{mode:0o600});return {serverOrigin,connected,signedIn,message:statusMessage};});
+ ipcMain.handle('gaon-client:save-server',async(event,value)=>{setupSender(event);return updateConnection(async()=>{const next=normalizeServerURL(value);await verifyServer(next);const nextSignedIn=await sessionVerified(next);await writeFile(statePath,JSON.stringify({serverOrigin:next})+'\n',{mode:0o600});if(next!==serverOrigin){locationGranted=false;notifications?.reset();}serverOrigin=next;connected=true;signedIn=nextSignedIn;statusMessage=signedIn?'직원 로그인이 확인됐습니다. ERP를 열 수 있습니다.':'서버 연결을 확인했습니다. 직원 로그인을 진행해 주세요.';return {serverOrigin,connected,signedIn,message:statusMessage};});});
  ipcMain.handle('gaon-client:login',async event=>{setupSender(event);await beginLogin();return {message:'직원 로그인이 완료됐습니다.'};});
- ipcMain.handle('gaon-client:open-app',async event=>{setupSender(event);if(!await verifySession())throw Error('직원 로그인이 필요합니다.');await openERP();return {opened:true};});
- ipcMain.handle('gaon-client:forget-server',async event=>{setupSender(event);if(loginBusy)throw Error('직원 로그인 진행 중에는 서버 주소를 지울 수 없습니다.');const old=serverOrigin;serverOrigin='';connected=false;signedIn=false;locationGranted=false;statusMessage='저장한 서버 주소를 지웠습니다.';await rm(statePath,{force:true});if(old)await ses().clearStorageData({origin:old});return {cleared:true};});
+ ipcMain.handle('gaon-client:open-app',async event=>{setupSender(event);if(loginBusy||connectionBusy)throw Error('로그인 또는 연결 설정을 처리 중입니다.');if(!await verifySession())throw Error('직원 로그인이 필요합니다.');await openERP();return {opened:true};});
+ ipcMain.handle('gaon-client:forget-server',async event=>{setupSender(event);return updateConnection(async()=>{const old=serverOrigin;notifications?.reset();serverOrigin='';connected=false;signedIn=false;locationGranted=false;statusMessage='저장한 서버 주소를 지웠습니다.';await rm(statePath,{force:true});if(old)await ses().clearStorageData({origin:old});return {cleared:true};});});
  ipcMain.handle('gaon-client:manual',async event=>{setupSender(event);await openManual();return {opened:true};});
 }
 function configureSession(){
@@ -64,32 +68,38 @@ function configureSession(){
  current.setPermissionCheckHandler((webContents,permission,requestingOrigin)=>webContents===window?.webContents&&permission==='geolocation'&&signedIn&&locationGranted&&requestingOrigin===serverOrigin);
  current.on('will-download',(event,item,contents)=>{if(!contents||!trustedClientDownload(item.getURL(),serverOrigin)){event.preventDefault();return;}item.setSaveDialogOptions({title:'GAON ERP · 파일 저장',defaultPath:path.join(app.getPath('downloads'),path.basename(item.getFilename()))});});
 }
+function configureNotifications(){
+ notifications=createDesktopNotifications({fetcher:(...args)=>ses().fetch(...args),getOrigin:()=>serverOrigin,isInternal:url=>clientURLAction(url,serverOrigin)==='internal',supported:()=>Notification.isSupported(),prepare:()=>prepareWindowsNotificationShortcut({app,shell}),createNotification:createNativeNotifier(Notification),preferences:createNotificationPreferenceStore(path.join(app.getPath('userData'),'notifications.json')),onUnauthorized:()=>{signedIn=false;locationGranted=false;},onOpen:async url=>{if(!window||window.isDestroyed()||!signedIn||clientURLAction(url,serverOrigin)!=='internal')return;await window.loadURL(url);focus();}});
+ installDesktopNotificationIPC(ipcMain,{controller:notifications,getWindow:()=>window,isInternal:url=>clientURLAction(url,serverOrigin)==='internal'});
+ observeDesktopLogout(ses(),{controller:notifications,getOrigin:()=>serverOrigin});
+}
 async function verifyServer(origin=serverOrigin){
  const response=await ses().fetch(origin+'/healthz',{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(10000)}).catch(()=>null);
  if(!response?.ok||!trustedClientHealth(await response.json().catch(()=>null)))throw Error('GAON ERP 서버를 확인할 수 없습니다. HTTPS 주소와 서버 상태를 확인해 주세요.');
  connected=true;return true;
 }
-async function verifySession(){
- if(!serverOrigin)return false;
- const response=await ses().fetch(serverOrigin+'/api/gaon/auth/status',{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(10000)}).catch(()=>null);
- signedIn=!!response?.ok&&trustedClientStatus(await response.json().catch(()=>null));return signedIn;
+async function updateConnection(action){if(loginBusy||connectionBusy)throw Error('연결 설정을 처리 중입니다. 잠시 후 다시 시도해 주세요.');connectionBusy=true;try{return await action();}finally{connectionBusy=false;}}
+async function sessionVerified(origin){
+ if(!origin)return false;const response=await ses().fetch(origin+'/api/gaon/auth/status',{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(10000)}).catch(()=>null);return !!response?.ok&&trustedClientStatus(await response.json().catch(()=>null));
 }
-async function postAuth(endpoint,body){return ses().fetch(serverOrigin+'/api/gaon/auth/desktop/'+endpoint,{method:'POST',headers:{Origin:serverOrigin,'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});}
+async function verifySession(){signedIn=await sessionVerified(serverOrigin);if(!signedIn)notifications?.reset();return signedIn;}
+async function postAuth(endpoint,body,origin=serverOrigin){return ses().fetch(origin+'/api/gaon/auth/desktop/'+endpoint,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json','Cache-Control':'no-store'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});}
 async function beginLogin(purpose='login'){
- if(loginBusy)throw Error('이미 직원 로그인을 기다리고 있습니다.');
- await verifyServer();loginBusy=true;window?.setProgressBar(2);
+ if(loginBusy||connectionBusy)throw Error('로그인 또는 연결 설정을 처리 중입니다.');
+ loginBusy=true;const loginOrigin=serverOrigin;window?.setProgressBar(2);
  try{
+  await verifyServer(loginOrigin);
   const verifier=randomBytes(32).toString('base64url'),challenge=createHash('sha256').update(verifier).digest('base64url');
-  const response=await postAuth('start',{challenge,purpose});if(!response.ok)throw Error('직원 로그인 연결을 시작하지 못했습니다.');
+  const response=await postAuth('start',{challenge,purpose},loginOrigin);if(!response.ok)throw Error('직원 로그인 연결을 시작하지 못했습니다.');
   const flow=await response.json(),maxExpiry=Date.now()+10*60*1000;
   if(!/^[A-Za-z0-9_-]{43}$/.test(flow.id)||flow.loginPath!==`/api/gaon/auth/login?desktop=${flow.id}`||!Number.isFinite(flow.expires)||flow.expires<=Date.now()||flow.expires>maxExpiry)throw Error('서버의 로그인 응답을 확인할 수 없습니다.');
-  await shell.openExternal(serverOrigin+flow.loginPath);
+  await shell.openExternal(loginOrigin+flow.loginPath);
   while(Date.now()<flow.expires&&!quitting){
-   await delay(1000);const claim=await postAuth('claim',{id:flow.id,verifier});
+   await delay(1000);const claim=await postAuth('claim',{id:flow.id,verifier},loginOrigin);
    if(claim.status===202)continue;if(!claim.ok)throw Error('직원 로그인 연결이 만료됐습니다. 다시 시도해 주세요.');
-   const statusResponse=await ses().fetch(serverOrigin+'/api/gaon/auth/status',{cache:'no-store',signal:AbortSignal.timeout(10000)}).catch(()=>null);
+   const statusResponse=await ses().fetch(loginOrigin+'/api/gaon/auth/status',{cache:'no-store',signal:AbortSignal.timeout(10000)}).catch(()=>null);
    if(!statusResponse?.ok||!trustedClientStatus(await statusResponse.json().catch(()=>null)))throw Error('직원 권한을 확인하지 못했습니다.');
-   signedIn=true;if(purpose==='login')await openERP();else window?.webContents.reload();return;
+   notifications?.reset();signedIn=true;if(purpose==='login')await openERP();else window?.webContents.reload();return;
   }
   throw Error('로그인 시간이 초과됐습니다. 다시 시도해 주세요.');
  }finally{loginBusy=false;if(window&&!window.isDestroyed())window.setProgressBar(-1);}
