@@ -5,11 +5,11 @@
 
 ## 다운로드
 
-`0.2.0-preview.3`은 현재 공개 후보입니다. GitHub Actions의 Windows 빌드와 산출물 검증을 마친 뒤 이 절의 링크를 새 릴리스로 전환합니다. 아래 링크는 검증이 끝난 현재 공개본 `0.2.0-preview.1`입니다.
+`0.2.0-preview.3` 검수본을 공개했습니다. Windows CI의 설치·설치된 앱 실행·제거 검사와 배포 파일 해시 대조를 통과했습니다.
 
-- **[Windows 64비트 설치 파일](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.1/GAON-ERP-Setup-x64.exe)**
-- [설치 없이 압축 해제해서 쓰는 ZIP](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.1/GAON-ERP-Windows-x64.zip)
-- **[3쪽 빠른 시작 매뉴얼 PDF](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.1/GAON-ERP-Quickstart.pdf)**
+- **[Windows 64비트 설치 파일](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.3/GAON-ERP-Setup-x64.exe)**
+- [설치 없이 압축 해제해서 쓰는 ZIP](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.3/GAON-ERP-Windows-x64.zip)
+- **[3쪽 빠른 시작 매뉴얼 PDF](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.3/GAON-ERP-Quickstart.pdf)**
 - [버전별 파일과 변경 내용](https://github.com/moonrisepsj/gaon-erp-releases/releases)
 
 ## 설치와 시작
@@ -25,7 +25,7 @@ ZIP 버전은 압축을 모두 푼 뒤 폴더 안의 `GAON ERP.exe`를 실행하
 
 ## 현재 배포 상태
 
-`0.2.0-preview.3`은 OS 업무 알림을 포함한 다음 서버 접속형 미리보기 후보입니다. 아직 공개 릴리스 자산은 만들지 않았으며, 현재 다운로드 링크는 `0.2.0-preview.1`을 유지합니다. **사내망·검수용 VPN HTTPS 주소는 별도 준비가 필요합니다.**
+`0.2.0-preview.3`은 OS 업무 알림을 포함한 서버 접속형 검수 배포본입니다. 설치·ZIP·매뉴얼·SHA256 파일을 공개했습니다. **사내망·검수용 VPN HTTPS 주소는 별도 준비가 필요합니다.**
 파일 다운로드와 설치는 가능하지만, 주소와 직원 계정이 제공되기 전에는 실제 ERP 업무에 접속할 수 없습니다.
 이 설치 파일을 받는 것만으로 내부 ERP 서버가 공개되거나 업무 자료가 복사되지는 않습니다.
 
@@ -38,7 +38,7 @@ ARM 및 32비트 Windows 설치본은 이 릴리즈에 포함하지 않습니다
 공개된 소스는 Windows 접속용 껍데기와 빌드 구성, 매뉴얼뿐입니다. 직원 비밀번호는 기본 브라우저에서 입력하며,
 로그인 완료 뒤 ERP 세션 상태는 이 PC에 유지됩니다. 앱의 연결 설정에서 저장한 주소와 해당 서버의 로그인 상태를 지울 수 있습니다.
 
-빌드는 GitHub Actions의 Windows 환경에서 정책 검사와 최초 화면·IPC 검사를 거친 뒤 NSIS 설치본과 ZIP을 만듭니다.
+빌드는 GitHub Actions의 Windows 환경에서 정책·최초 화면·IPC·패키지 파일 범위를 검사한 뒤 NSIS 설치본과 ZIP을 만듭니다. 이 버전은 설치된 EXE의 실제 창 기동과 제거까지 통과했습니다.
 실제 운영 서버 로그인부터 업무 저장까지의 Windows 현장 검수는 운영 접속 주소가 준비된 뒤 진행해야 합니다.
 각 릴리즈의 `SHA256SUMS.txt`에서 내려받은 파일의 무결성을 대조할 수 있습니다.
 
