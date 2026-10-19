@@ -1,0 +1,46 @@
+name: Windows release build
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned build tools
+        run: npm install --no-audit --no-fund
+      - name: Security policy tests
+        run: npm test
+      - name: Windows first-launch and preload IPC test
+        run: npm run smoke
+      - name: Build x64 installer and ZIP
+        run: npm run build:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Verify packaged files
+        shell: pwsh
+        run: |
+          $archive = 'release/win-unpacked/resources/app.asar'
+          $listed = & npx --no-install asar list $archive
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect ASAR' }
+          $allowed = @('/app','/app/desktop-client-main.mjs','/app/desktop-client-policy.mjs','/app/desktop-client-preload.cjs','/app/desktop-client-setup.html','/app/desktop-client-setup.css','/app/desktop-client-setup.mjs','/app/desktop-client-manual.html','/package.json')
+          foreach ($file in $listed) {
+            $normal = $file.Replace('\','/')
+            if ($normal -notin $allowed) { throw "Unexpected packaged file: $normal" }
+          }
+          $listed | Set-Content release/packaged-files.txt
+          Get-FileHash release/GAON-ERP-Setup-x64.exe,release/GAON-ERP-Windows-x64.zip -Algorithm SHA256 | Format-Table -AutoSize
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gaon-erp-windows-x64
+          path: |
+            release/GAON-ERP-Setup-x64.exe
+            release/GAON-ERP-Windows-x64.zip
+            release/packaged-files.txt
+          retention-days: 7
+          if-no-files-found: error
