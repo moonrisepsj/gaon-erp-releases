@@ -12,7 +12,7 @@ export function normalizeServerURL(raw){
  let url;
  try{url=new URL(raw.trim());}catch{throw Error('https://로 시작하는 서버 주소를 입력해 주세요.');}
  if(url.protocol!=='https:'||url.username||url.password||url.port||url.pathname!=='/'||url.search||url.hash)throw Error('경로 없이 https:// 서버 주소만 입력해 주세요.');
- if(!url.hostname.includes('.')||url.hostname==='localhost'||url.hostname.endsWith('.local'))throw Error('공개 HTTPS 서버 주소를 입력해 주세요.');
+ if(!url.hostname.includes('.')||url.hostname==='localhost'||url.hostname.endsWith('.local'))throw Error('관리자가 안내한 HTTPS 서버 주소를 입력해 주세요.');
  return url.origin;
 }
 
