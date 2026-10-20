@@ -9,4 +9,4 @@ contextBridge.exposeInMainWorld('gaonDesktop',Object.freeze({
  openManual:()=>ipcRenderer.invoke('gaon-client:manual')
 }));
 
-contextBridge.exposeInMainWorld('gaonNotifications',Object.freeze({status:()=>ipcRenderer.invoke('gaon-notifications:status'),configure:value=>ipcRenderer.invoke('gaon-notifications:configure',value)}));
+contextBridge.exposeInMainWorld('gaonNotifications',Object.freeze({status:()=>ipcRenderer.invoke('gaon-notifications:status'),configure:value=>ipcRenderer.invoke('gaon-notifications:configure',value),test:()=>ipcRenderer.invoke('gaon-notifications:test'),testStatus:()=>ipcRenderer.invoke('gaon-notifications:test-status'),openSettings:()=>ipcRenderer.invoke('gaon-notifications:open-settings')}));

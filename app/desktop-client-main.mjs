@@ -3,7 +3,7 @@ import {readFile,writeFile,rm,access} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {randomBytes,createHash} from 'node:crypto';
-import {createDesktopNotifications,prepareWindowsNotificationShortcut,createNativeNotifier,createNotificationPreferenceStore,installDesktopNotificationIPC,observeDesktopLogout} from './desktop-notifications.mjs';
+import {createDesktopNotifications,openDesktopNotificationSystemSettings,prepareWindowsNotificationShortcut,createNativeNotifier,createNotificationPreferenceStore,installDesktopNotificationIPC,observeDesktopLogout} from './desktop-notifications.mjs';
 import {clientWebPreferences,normalizeServerURL,clientURLAction,trustedClientHealth,trustedClientStatus,trustedClientDownload} from './desktop-client-policy.mjs';
 
 app.setName('GAON ERP');
@@ -69,7 +69,7 @@ function configureSession(){
  current.on('will-download',(event,item,contents)=>{if(!contents||!trustedClientDownload(item.getURL(),serverOrigin)){event.preventDefault();return;}item.setSaveDialogOptions({title:'GAON ERP · 파일 저장',defaultPath:path.join(app.getPath('downloads'),path.basename(item.getFilename()))});});
 }
 function configureNotifications(){
- notifications=createDesktopNotifications({fetcher:(...args)=>ses().fetch(...args),getOrigin:()=>serverOrigin,isInternal:url=>clientURLAction(url,serverOrigin)==='internal',supported:()=>Notification.isSupported(),prepare:()=>prepareWindowsNotificationShortcut({app,shell}),createNotification:createNativeNotifier(Notification),preferences:createNotificationPreferenceStore(path.join(app.getPath('userData'),'notifications.json')),onUnauthorized:()=>{signedIn=false;locationGranted=false;},onOpen:async url=>{if(!window||window.isDestroyed()||!signedIn||clientURLAction(url,serverOrigin)!=='internal')return;await window.loadURL(url);focus();}});
+ notifications=createDesktopNotifications({fetcher:(...args)=>ses().fetch(...args),getOrigin:()=>serverOrigin,isInternal:url=>clientURLAction(url,serverOrigin)==='internal',supported:()=>Notification.isSupported(),prepare:()=>prepareWindowsNotificationShortcut({app,shell}),createNotification:createNativeNotifier(Notification),preferences:createNotificationPreferenceStore(path.join(app.getPath('userData'),'notifications.json')),onTestOpen:async()=>focus(),openSettings:()=>openDesktopNotificationSystemSettings({shell}),onUnauthorized:()=>{signedIn=false;locationGranted=false;},onOpen:async url=>{if(!window||window.isDestroyed()||!signedIn||clientURLAction(url,serverOrigin)!=='internal')return;await window.loadURL(url);focus();}});
  installDesktopNotificationIPC(ipcMain,{controller:notifications,getWindow:()=>window,isInternal:url=>clientURLAction(url,serverOrigin)==='internal'});
  observeDesktopLogout(ses(),{controller:notifications,getOrigin:()=>serverOrigin});
 }

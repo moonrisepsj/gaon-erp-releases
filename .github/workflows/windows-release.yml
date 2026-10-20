@@ -30,6 +30,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect ASAR' }
           $listed = @($listed | ForEach-Object { $_.Replace('\','/') })
           $package = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
+          if ($package.version -ne '0.2.0-preview.4') { throw "Package version mismatch: $($package.version)" }
           $allowed = @('/app') + @($package.build.files | ForEach-Object { '/' + $_.Replace('\','/') })
           foreach ($required in $allowed) {
             if ($required -notin $listed) { throw "Required packaged file missing: $required" }
@@ -53,6 +54,7 @@ jobs:
             if (-not (Test-Path -LiteralPath $path)) { throw "Installed file missing: $path" }
           }
           $version = (Get-Item -LiteralPath $exe).VersionInfo.ProductVersion
+          if ($version -ne '0.2.0.0') { throw "Installed product version mismatch: $version" }
           $client = $null
           $clientStarted = $false
           try {

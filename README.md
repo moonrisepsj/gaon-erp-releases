@@ -7,6 +7,8 @@
 
 `0.2.0-preview.3` 검수본을 공개했습니다. Windows CI의 설치·설치된 앱 실행·제거 검사와 배포 파일 해시 대조를 통과했습니다.
 
+`0.2.0-preview.4`는 새 기기 알림 self-test가 포함된 Windows 후보입니다. 아직 설치본 공개와 실제 직원 기기 표시·클릭 검수를 완료하지 않았으므로 아래 다운로드는 검증이 끝난 `preview.3`을 유지합니다.
+
 - **[Windows 64비트 설치 파일](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.3/GAON-ERP-Setup-x64.exe)**
 - [설치 없이 압축 해제해서 쓰는 ZIP](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.3/GAON-ERP-Windows-x64.zip)
 - **[3쪽 빠른 시작 매뉴얼 PDF](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.3/GAON-ERP-Quickstart.pdf)**
