@@ -5,13 +5,13 @@
 
 ## 다운로드
 
-`0.2.0-preview.3` 검수본을 공개했습니다. Windows CI의 설치·설치된 앱 실행·제거 검사와 배포 파일 해시 대조를 통과했습니다.
+`0.2.0-preview.4` 검수본을 공개했습니다. Windows CI의 실제 설치·설치된 앱 창 실행·제거 검사와 배포 파일 SHA256 대조를 통과했습니다.
 
-`0.2.0-preview.4`는 새 기기 알림 self-test가 포함된 Windows 후보입니다. 아직 설치본 공개와 실제 직원 기기 표시·클릭 검수를 완료하지 않았으므로 아래 다운로드는 검증이 끝난 `preview.3`을 유지합니다.
+새 버전에는 이 기기의 알림 표시·클릭 자체 테스트, OS 알림 설정 열기, 일시적 연결 끊김 후 최근 알림 복구가 포함됩니다. 실제 직원 기기의 OS 허용·표시·클릭 인수는 별도이며, 설치본 자동 업데이트 기능은 없습니다.
 
-- **[Windows 64비트 설치 파일](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.3/GAON-ERP-Setup-x64.exe)**
-- [설치 없이 압축 해제해서 쓰는 ZIP](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.3/GAON-ERP-Windows-x64.zip)
-- **[3쪽 빠른 시작 매뉴얼 PDF](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.3/GAON-ERP-Quickstart.pdf)**
+- **[Windows 64비트 설치 파일](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.4/GAON-ERP-Setup-x64.exe)**
+- [설치 없이 압축 해제해서 쓰는 ZIP](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.4/GAON-ERP-Windows-x64.zip)
+- **[3쪽 빠른 시작 매뉴얼 PDF](https://github.com/moonrisepsj/gaon-erp-releases/releases/download/v0.2.0-preview.4/GAON-ERP-Quickstart.pdf)**
 - [버전별 파일과 변경 내용](https://github.com/moonrisepsj/gaon-erp-releases/releases)
 
 ## 설치와 시작
@@ -27,7 +27,7 @@ ZIP 버전은 압축을 모두 푼 뒤 폴더 안의 `GAON ERP.exe`를 실행하
 
 ## 현재 배포 상태
 
-`0.2.0-preview.3`은 OS 업무 알림을 포함한 서버 접속형 검수 배포본입니다. 설치·ZIP·매뉴얼·SHA256 파일을 공개했습니다. **사내망·검수용 VPN HTTPS 주소는 별도 준비가 필요합니다.**
+`0.2.0-preview.4`는 OS 업무 알림을 포함한 서버 접속형 검수 배포본입니다. 설치·ZIP·매뉴얼·SHA256 파일을 공개했습니다. **사내망·검수용 VPN HTTPS 주소는 별도 준비가 필요합니다.**
 파일 다운로드와 설치는 가능하지만, 주소와 직원 계정이 제공되기 전에는 실제 ERP 업무에 접속할 수 없습니다.
 이 설치 파일을 받는 것만으로 내부 ERP 서버가 공개되거나 업무 자료가 복사되지는 않습니다.
 
