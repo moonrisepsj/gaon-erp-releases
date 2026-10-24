@@ -41,3 +41,7 @@ export function trustedClientStatus(value){
 export function trustedClientDownload(raw,serverOrigin){
  try{const url=new URL(raw);return !url.username&&!url.password&&((url.protocol==='blob:'&&url.origin===serverOrigin)||(url.protocol==='https:'&&url.origin===serverOrigin));}catch{return false;}
 }
+
+export function cloudRendererNetworkAllowed(raw,origin){
+ try{const url=new URL(raw);if(url.protocol==='https:')return url.origin===origin;if(url.protocol==='blob:')return url.origin===origin;return url.protocol==='data:';}catch{return false;}
+}

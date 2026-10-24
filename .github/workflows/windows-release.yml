@@ -30,7 +30,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect ASAR' }
           $listed = @($listed | ForEach-Object { $_.Replace('\','/') })
           $package = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
-          if ($package.version -ne '0.2.0-preview.4') { throw "Package version mismatch: $($package.version)" }
+          if ($package.version -ne '0.2.0-preview.5') { throw "Package version mismatch: $($package.version)" }
           $allowed = @('/app') + @($package.build.files | ForEach-Object { '/' + $_.Replace('\','/') })
           foreach ($required in $allowed) {
             if ($required -notin $listed) { throw "Required packaged file missing: $required" }
@@ -39,7 +39,13 @@ jobs:
             if ($file -notin $allowed) { throw "Unexpected packaged file: $file" }
           }
           $listed | Set-Content release/packaged-files.txt
-          Get-FileHash release/GAON-ERP-Setup-x64.exe,release/GAON-ERP-Windows-x64.zip -Algorithm SHA256 | Format-Table -AutoSize
+          Get-FileHash release/GAON-ERP-Setup-x64.exe,release/GAON-ERP-Windows-x64.zip -Algorithm SHA256 | ConvertTo-Json | Set-Content release/checksums.json
+          $signatures = @('release/win-unpacked/GAON ERP.exe','release/GAON-ERP-Setup-x64.exe') | ForEach-Object {
+            $signature = Get-AuthenticodeSignature -LiteralPath $_
+            if ($signature.Status -ne 'NotSigned') { throw "Unexpected signature state: $($signature.Status)" }
+            @{ file = $_; status = [string]$signature.Status }
+          }
+          $signatures | ConvertTo-Json | Set-Content release/signatures.json
       - name: Install, inspect and uninstall
         shell: pwsh
         run: |
@@ -95,6 +101,8 @@ jobs:
             release/GAON-ERP-Setup-x64.exe
             release/GAON-ERP-Windows-x64.zip
             release/packaged-files.txt
+            release/checksums.json
+            release/signatures.json
             release/windows-installer-verification.json
           retention-days: 7
           if-no-files-found: error

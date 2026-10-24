@@ -1,6 +1,6 @@
 {
   "name": "gaon-erp-windows",
-  "version": "0.2.0-preview.4",
+  "version": "0.2.0-preview.5",
   "description": "GAON ERP Windows client",
   "productName": "GAON ERP",
   "author": "GAON ERP",
@@ -21,10 +21,13 @@
     "productName": "GAON ERP",
     "copyright": "Copyright © 2026 GAON ERP",
     "asar": true,
-    "directories": { "output": "release" },
+    "directories": {
+      "output": "release"
+    },
     "files": [
       "package.json",
       "app/desktop-client-main.mjs",
+      "app/desktop-cloud-session.mjs",
       "app/desktop-notifications.mjs",
       "app/desktop-client-policy.mjs",
       "app/desktop-client-preload.cjs",
@@ -33,10 +36,28 @@
       "app/desktop-client-setup.mjs",
       "app/desktop-client-manual.html"
     ],
-    "extraResources": [{ "from": "docs/GAON-ERP-Quickstart.pdf", "to": "GAON-ERP-Quickstart.pdf" }],
+    "extraResources": [
+      {
+        "from": "docs/GAON-ERP-Quickstart.pdf",
+        "to": "GAON-ERP-Quickstart.pdf"
+      }
+    ],
     "win": {
       "icon": "app/brand/gaon-desktop.ico",
-      "target": [ { "target": "nsis", "arch": ["x64"] }, { "target": "zip", "arch": ["x64"] } ],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "artifactName": "GAON-ERP-Windows-${arch}.${ext}"
     },
     "nsis": {
@@ -48,9 +69,20 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "GAON ERP",
-      "installerLanguages": ["ko_KR", "en_US"],
+      "installerLanguages": [
+        "ko_KR",
+        "en_US"
+      ],
       "language": "1042",
       "deleteAppDataOnUninstall": false
-    }
+    },
+    "protocols": [
+      {
+        "name": "GAON 직원 로그인",
+        "schemes": [
+          "studio.keelson.gaon"
+        ]
+      }
+    ]
   }
 }

@@ -10,3 +10,5 @@ contextBridge.exposeInMainWorld('gaonDesktop',Object.freeze({
 }));
 
 contextBridge.exposeInMainWorld('gaonNotifications',Object.freeze({status:()=>ipcRenderer.invoke('gaon-notifications:status'),configure:value=>ipcRenderer.invoke('gaon-notifications:configure',value),test:()=>ipcRenderer.invoke('gaon-notifications:test'),testStatus:()=>ipcRenderer.invoke('gaon-notifications:test-status'),openSettings:()=>ipcRenderer.invoke('gaon-notifications:open-settings')}));
+
+contextBridge.exposeInMainWorld('gaonDesktopCloud',Object.freeze({version:1,request:input=>ipcRenderer.invoke('gaon-cloud:request',input),login:returnTo=>ipcRenderer.invoke('gaon-cloud:login',returnTo)}));

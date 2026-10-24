@@ -55,3 +55,14 @@ test('Windows release files exactly cover the desktop runtime dependency closure
  const packagedRuntime=new Set([...packaged].filter(item=>item.startsWith('app/')));
  assert.deepEqual([...packagedRuntime].sort(),[...runtime].sort(),`${path.relative(root,file)} build.files must match the desktop runtime dependency closure`);
 });
+
+test('cloud wrapper preserves legacy login and explicitly registers the Google callback',async()=>{
+ const {value}=await releasePackage(),main=await readFile(path.join(root,'app/desktop-client-main.mjs'),'utf8'),policy=await readFile(path.join(root,'app/desktop-client-policy.mjs'),'utf8');
+ assert.equal('electron-updater' in {...value.dependencies,...value.devDependencies},false);
+ assert.doesNotMatch(main+policy,/\b(?:autoUpdater|checkForUpdates|setFeedURL)\b/);
+ assert.match(main,/\/api\/gaon\/auth\/desktop\/'\+endpoint/);assert.match(main,/postAuth\('start'/);assert.match(main,/postAuth\('claim'/);assert.match(main,/\/healthz/);
+ assert.deepEqual(value.build.protocols,[{name:'GAON 직원 로그인',schemes:['studio.keelson.gaon']}]);
+ assert.match(main,/desktopCloudOrigin/);assert.equal(value.build.files.includes('app/desktop-cloud-session.mjs'),true);
+ assert.equal(value.build.nsis.deleteAppDataOnUninstall,false);
+ assert.equal(value.build.files.includes('desktop-client-config.json'),false);
+});
